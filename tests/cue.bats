@@ -14,6 +14,7 @@ setup() {
 if [ -f "$XDG_DATA_HOME/notify_fail" ]; then
     exit 1
 fi
+echo "${DBUS_SESSION_BUS_ADDRESS:-}" > "$XDG_DATA_HOME/notify_dbus_env"
 echo "$@" >> "$XDG_DATA_HOME/notify_calls"
 exit 0
 INNER
@@ -404,4 +405,69 @@ INNER
     crontab_contents=$(cat "$XDG_DATA_HOME/mock_crontab")
     [[ "$crontab_contents" == *"0 8 * * * /job"* ]]
     [[ "$crontab_contents" != *"# CUE: scheduler"* ]]
+}
+
+@test "11.1 Notification preserves existing DBUS_SESSION_BUS_ADDRESS" {
+    mkdir -p "$XDG_DATA_HOME/cue"
+    echo "1|2000-01-01 12:00|Task|once|pending||" > "$XDG_DATA_HOME/cue/reminders"
+
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=/custom/bus"
+    run run_cue check
+    [ "$status" -eq 0 ]
+
+    [ -f "$XDG_DATA_HOME/notify_calls" ]
+    dbus_val=$(cat "$XDG_DATA_HOME/notify_dbus_env")
+    [ "$dbus_val" = "unix:path=/custom/bus" ]
+}
+
+@test "11.2 Notification discovers DBUS_SESSION_BUS_ADDRESS when missing" {
+    mkdir -p "$XDG_DATA_HOME/cue"
+    echo "1|2000-01-01 12:00|Task|once|pending||" > "$XDG_DATA_HOME/cue/reminders"
+
+    unset DBUS_SESSION_BUS_ADDRESS
+    export CUE_TEST_BUS_PATH="$XDG_DATA_HOME/fake_bus"
+    touch "$CUE_TEST_BUS_PATH"
+
+    run run_cue check
+    [ "$status" -eq 0 ]
+
+    [ -f "$XDG_DATA_HOME/notify_calls" ]
+    dbus_val=$(cat "$XDG_DATA_HOME/notify_dbus_env")
+    [ "$dbus_val" = "unix:path=$CUE_TEST_BUS_PATH" ]
+}
+
+@test "11.3 Notification fails safely if bus is missing" {
+    mkdir -p "$XDG_DATA_HOME/cue"
+    echo "1|2000-01-01 12:00|Task|once|pending||" > "$XDG_DATA_HOME/cue/reminders"
+
+    unset DBUS_SESSION_BUS_ADDRESS
+    export CUE_TEST_BUS_PATH="$XDG_DATA_HOME/nonexistent_bus"
+
+    run run_cue check
+
+    [ ! -f "$XDG_DATA_HOME/notify_calls" ]
+
+    line=$(cat "$XDG_DATA_HOME/cue/reminders")
+    last_triggered=$(echo "$line" | cut -d"|" -f7)
+
+    [ -z "$last_triggered" ]
+}
+
+@test "11.4 Failed recurring notification does not advance time" {
+    mkdir -p "$XDG_DATA_HOME/cue"
+    echo "1|2000-01-01 12:00|Task|recurring|pending|2h|" > "$XDG_DATA_HOME/cue/reminders"
+
+    unset DBUS_SESSION_BUS_ADDRESS
+    export CUE_TEST_BUS_PATH="$XDG_DATA_HOME/nonexistent_bus"
+
+    run run_cue check
+
+    [ ! -f "$XDG_DATA_HOME/notify_calls" ]
+
+    line=$(cat "$XDG_DATA_HOME/cue/reminders")
+    time=$(echo "$line" | cut -d"|" -f2)
+    last_triggered=$(echo "$line" | cut -d"|" -f7)
+
+    [ "$time" = "2000-01-01 12:00" ]
+    [ -z "$last_triggered" ]
 }

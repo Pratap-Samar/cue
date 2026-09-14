@@ -407,6 +407,23 @@ INNER
     [[ "$crontab_contents" != *"# CUE: scheduler"* ]]
 }
 
+@test "10.6 Install PATH warning detection (missing)" {
+    export HOME="$BATS_TEST_TMPDIR"
+    export PATH="/usr/bin:/bin"
+    run run_cue install
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Warning: $HOME/.local/bin is not in your PATH."* ]]
+}
+
+@test "10.7 Install PATH warning detection (present)" {
+    export HOME="$BATS_TEST_TMPDIR"
+    export PATH="$HOME/.local/bin:/usr/bin:/bin"
+    run run_cue install
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Warning: $HOME/.local/bin is not in your PATH."* ]]
+    [[ "$output" == *"You can now use the 'cue' command from anywhere."* ]]
+}
+
 @test "11.1 Notification preserves existing DBUS_SESSION_BUS_ADDRESS" {
     mkdir -p "$XDG_DATA_HOME/cue"
     echo "1|2000-01-01 12:00|Task|once|pending||" > "$XDG_DATA_HOME/cue/reminders"

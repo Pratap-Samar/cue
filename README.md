@@ -79,6 +79,8 @@ There is an important distinction between the moving parts:
 - **Enabling the distro's cron service**: Starts the background system daemon (`cronie` or `cron`) that runs scheduled jobs. CUE relies on this to wake up every minute.
 - **Installing CUE (`./cue install`)**: This command does two things. First, it creates an executable wrapper for CUE in `~/.local/bin/cue` so you can use the `cue` command from anywhere. Second, it injects a single entry into your user's `crontab` that safely invokes CUE's scheduler (`cue check`) every minute.
 
+If `~/.local/bin` is not currently in your system's `PATH`, the installer will output a warning with exact instructions on how to add it so the `cue` command works without `./`.
+
 ## Command Reference
 
 | Command | Description |
@@ -128,7 +130,7 @@ CUE adheres to the UNIX philosophy. The architecture relies on simple chained co
 
 CUE includes a comprehensive test suite to ensure stability and data integrity.
 
-- **Bats**: 27 automated behavioral tests mock system utilities (like `cron` and `notify-send`) securely in a temporary environment. Run with `bats tests/cue.bats`.
+- **Bats**: 33 automated behavioral tests mock system utilities (like `cron` and `notify-send`) securely in a temporary environment. Run with `bats tests/cue.bats`.
 - **ShellCheck**: Statically analyzes the Bash codebase. Run with `shellcheck --severity=warning cue lib/*.sh tests/cue.bats`.
 - **Bash Syntax**: Basic syntax compilation checks (`bash -n`).
 - **GitHub Actions**: Automated CI testing on every push and pull request to `main`.

@@ -176,6 +176,20 @@ EOF
             (crontab -l 2>/dev/null || true; echo "$CRON_LINE") | crontab -
             echo "CUE cron job installed."
         fi
+
+        echo
+        echo "CUE installed successfully."
+        if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+            echo "Warning: $HOME/.local/bin is not in your PATH."
+            echo "To use the 'cue' command interactively, you must add it to your shell configuration."
+            echo
+            echo "For a temporary current-session fix, run:"
+            echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+            echo
+            echo "For a persistent fix, append the above line to your ~/.bashrc or ~/.zshrc."
+        else
+            echo "You can now use the 'cue' command from anywhere."
+        fi
         ;;
 
     uninstall)
